@@ -388,8 +388,69 @@
         </div>
     </div>
     
+    <canvas id="appartChart" width="800" height="400"></canvas>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+    const appartPrice = 100000;     // Prix d’un appartement
+    const rentPerMonth = 1000;      // Loyer mensuel par appartement
+    const days = 365 * 30;          // 30 ans
+    
+    let appartCount = 1;
+    let cashReserve = 0;
+    let data = [];
+    let labels = [];
+    
+    for (let day = 1; day <= days; day++) {
+        // Revenu du jour
+        let dailyRent = (rentPerMonth * appartCount) / 30;
+        cashReserve += dailyRent;
+    
+        // Acheter de nouveaux apparts si réserve suffisante
+        while (cashReserve >= appartPrice) {
+            appartCount++;
+            cashReserve -= appartPrice;
+        }
+    
+        // (Re)calcul du loyer journalier après achat
+        dailyRent = (rentPerMonth * appartCount) / 30;
+    
+        // Enregistrer les données une fois par mois
+        if (day % 30 === 0) {
+            labels.push("Mois " + (day / 30));
+            data.push(appartCount);
+        }
+    }
+    
+    // Affichage du graphique
+    const ctx = document.getElementById('appartChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Nombre d’appartements',
+                data: data,
+                borderColor: 'green',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.2
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: 'Appartements' }
+                },
+                x: {
+                    title: { display: true, text: 'Mois' }
+                }
+            }
+        }
+    });
+
         document.addEventListener('DOMContentLoaded', function() {
             let chart = null;
             let milestones = []; // Déclaration de la variable milestones
