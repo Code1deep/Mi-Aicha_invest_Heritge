@@ -453,18 +453,16 @@
             function calculate() {
                 const capitalInput = document.getElementById('capital').value;
                 const rentInput = document.getElementById('monthly_rent').value;
-                
-                // Validation des entrées
+            
                 if (!capitalInput || !rentInput) {
                     alert("Veuillez saisir le capital et le loyer mensuel");
                     return;
                 }
-                
-                const initialCapital = parseFloat(capitalInput);
-                const monthlyRent = parseFloat(rentInput);
+            
+                const appartPrice = parseFloat(capitalInput);
+                const rentPerMonth = parseFloat(rentInput);
                 const calculationType = document.getElementById('calculation_type').value;
-                
-                // Déterminer le nombre de jours
+            
                 let days;
                 switch(calculationType) {
                     case '1year': days = 365; break;
@@ -482,132 +480,133 @@
                     case '60years': days = 60 * 365; break;
                     default: days = parseInt(document.getElementById('days').value) || 365;
                 }
-                
-                // Calcul du rendement quotidien (basé sur le loyer mensuel)
-                const dailyReturn = monthlyRent / 30; // Gain quotidien fixe basé sur le loyer
-                const dailyReturnRate = dailyReturn / initialCapital;
-                const annualReturnRate = dailyReturnRate * 365;
-                
-                // Variables de calcul
-                let currentCapital = initialCapital;
-                let totalReturn = 0;
+            
+                // Nouveau modèle ESCALIER
+                let appartCount = 1;
+                let cashReserve = 0;
+            
+                let capitalData = [];
+                let labels = [];
                 let html = '';
                 let milestonesHtml = '';
-                const capitalData = [];
-                const labels = [];
-                milestones = []; // Réinitialisation des milestones
-                
-                // Points d'étape (tous les 5 ans jusqu'à 60 ans)
+                milestones = [];
                 const milestoneIntervals = [];
-                for (let y = 0; y <= 60; y += 5) {
-                    milestoneIntervals.push(y * 365);
+            
+                for (let i = 1; i <= 100; i++) {
+                    milestoneIntervals.push(i * 365 * 5);
                 }
-                
-                // Simulation jour par jour
+            
                 for (let day = 1; day <= days; day++) {
-                    const newCapital = currentCapital + dailyReturn;
-                    
-                    // Enregistrement des données pour le graphique
+                    let dailyRent = (rentPerMonth * appartCount) / 30;
+                    cashReserve += dailyRent;
+            
+                    // Acheter un nouvel appart si possible
+                    while (cashReserve >= appartPrice) {
+                        appartCount++;
+                        cashReserve -= appartPrice;
+                    }
+            
+                    let currentCapital = appartCount * appartPrice + cashReserve;
+            
                     if (day === 1 || day % 30 === 0 || day === days) {
                         capitalData.push(currentCapital);
                         labels.push(day === days ? `${days}j (${Math.floor(days/365)}a)` : `J${day}`);
                     }
-                    
-                    // Vérification des étapes clés
+            
                     if (milestoneIntervals.includes(day)) {
                         milestones.push({
                             day: day,
+                            appartCount: appartCount,
                             capital: currentCapital,
-                            dailyReturn: dailyReturn,
+                            dailyRent: dailyRent,
                             years: Math.floor(day / 365)
                         });
                     }
-                    
-                    // Ajout des données journalières (limité aux 365 premiers jours)
-                    if (days <= 365 || day <= 365) {
+            
+                    if (days <= 5*365) {
                         const isMilestone = day % 365 === 0;
                         html += `
                             <tr ${isMilestone ? 'class="highlight"' : ''}>
                                 <td>${day}</td>
                                 <td>${currentCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
-                                <td class="positive">+${dailyReturn.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
-                                <td>${newCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
+                                <td class="positive">+${dailyRent.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
+                                <td>${cashReserve.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
                             </tr>
                         `;
+                    } else {
+                        if (day <= 365 || milestoneIntervals.includes(day)) {
+                            const isMilestone = milestoneIntervals.includes(day);
+                            html += `
+                                <tr ${isMilestone ? 'class="highlight"' : ''}>
+                                    <td>${day}</td>
+                                    <td>${currentCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
+                                    <td class="positive">+${dailyRent.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
+                                    <td>${cashReserve.toLocaleString('fr-FR', {minimumFractionDigits: 2})}</td>
+                                </tr>
+                            `;
+                        }
                     }
-                    
-                    totalReturn += dailyReturn;
-                    currentCapital = newCapital;
                 }
-                
-                // Génération du résumé
+            
+                const finalCapital = appartCount * appartPrice + cashReserve;
+                const totalGain = finalCapital - appartPrice;
+                const multiplier = finalCapital / appartPrice;
                 const totalYears = days / 365;
-                const finalCapital = currentCapital;
-                const totalGain = finalCapital - initialCapital;
-                const multiplier = finalCapital / initialCapital;
-                
+            
                 const summaryHTML = `
-                    <div class="summary-card">
-                        <h3>Investissement Initial</h3>
-                        <p>${initialCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Capital Final</h3>
-                        <p class="highlight">${finalCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Gains Totaux</h3>
-                        <p class="positive">+${totalGain.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Multiplicateur</h3>
-                        <p>${multiplier.toFixed(2)}x</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Rendement Quotidien</h3>
-                        <p>${(dailyReturnRate * 100).toFixed(4)}%</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Rendement Annuel</h3>
-                        <p>${(annualReturnRate * 100).toFixed(2)}%</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Durée</h3>
-                        <p>${days} jours (${totalYears.toFixed(1)} ans)</p>
-                    </div>
-                    <div class="summary-card">
-                        <h3>Gain Moyen/Jour</h3>
-                        <p>${(totalGain / days).toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
-                    </div>
+                <div class="summary-card">
+                    <h3>Prix unitaire d'un Appartement</h3>
+                    <p>${appartPrice.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Capital Final</h3>
+                    <p class="highlight">${finalCapital.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Nombre d'Appartements</h3>
+                    <p>${appartCount} appart(s)</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Loyer Mensuel Total</h3>
+                    <p>+${(rentPerMonth * appartCount).toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Solde en Caisse</h3>
+                    <p>${cashReserve.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Multiplicateur</h3>
+                    <p>${multiplier.toFixed(2)}x</p>
+                </div>
+                <div class="summary-card">
+                    <h3>Durée</h3>
+                    <p>${days} jours (${totalYears.toFixed(1)} ans)</p>
+                </div>
                 `;
-                
-                // Génération des étapes clés
+            
                 milestones.forEach(ms => {
                     if (ms.day <= days) {
                         milestonesHtml += `
                             <div class="milestone">
                                 <h3>Après ${ms.years} an${ms.years > 1 ? 's' : ''} (${ms.day} jours)</h3>
+                                <p><strong>Nombre d'Appartements:</strong> ${ms.appartCount}</p>
                                 <p><strong>Capital:</strong> ${ms.capital.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</p>
-                                <p><strong>Gain quotidien:</strong> <span class="positive">${ms.dailyReturn.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</span></p>
-                                <p><strong>Gain annuel:</strong> <span class="positive">${(ms.dailyReturn * 365).toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</span></p>
+                                <p><strong>Loyer quotidien total:</strong> <span class="positive">${ms.dailyRent.toLocaleString('fr-FR', {minimumFractionDigits: 2})} MAD</span></p>
                             </div>
                         `;
                     }
                 });
-                
-                // Mise à jour de l'interface
+            
                 document.getElementById('summary-content').innerHTML = summaryHTML;
                 document.getElementById('results-body').innerHTML = html;
                 document.getElementById('milestones-content').innerHTML = milestonesHtml;
                 document.getElementById('results').style.display = 'block';
-                
-                // Création du graphique
+            
                 createChart(labels, capitalData, days);
-                
-                // Défilement vers les résultats
+            
                 document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
             }
-            
+                 
             // Création du graphique
             function createChart(labels, data, days) {
                 const ctx = document.getElementById('chart').getContext('2d');
